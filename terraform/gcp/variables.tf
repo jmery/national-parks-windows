@@ -44,6 +44,12 @@ variable "label_ttl" {
 ////////////////////////////////
 // Habitat
 
+variable "sleep" {
+  default = 30
+  description = "Amount of time to sleep on Linux to allow hab-sup sufficient time to start."
+}
+
+
 variable "audit_origin" {
   default = "effortless"
 }
@@ -65,3 +71,12 @@ variable "hab_prod_channel" {
 variable "hab_update_strategy" {
   default = "at-once"
 }
+
+////////////////////////////////
+// Automate Reporting
+
+variable "automate_url" {}
+
+variable "automate_token" {}
+
+variable "automate_user" {}
