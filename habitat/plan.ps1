@@ -1,4 +1,4 @@
-$pkg_name="national-parks"
+$pkg_name="national-parks-windows"
 $pkg_description="A sample JavaEE Web app deployed in the Tomcat7 package"
 $pkg_origin="jmery"
 $pkg_version="6.5.0"
