@@ -12,7 +12,7 @@ data "template_file" "permanent_peer" {
   }
 }
 
-data "template_file" "mongodb" {
+data "template_file" "non_permanent_peer" {
   template = "${file("${path.module}/../templates/hab-sup.service")}"
   vars {
     flags = "--auto-update --peer ${google_compute_instance.permanent_peer.network_interface.0.network_ip}"
@@ -21,6 +21,10 @@ data "template_file" "mongodb" {
 
 data "template_file" "mongodb_toml" {
   template = "${file("${path.module}/../templates/mongo.toml")}"
+}
+
+data "template_file" "haproxy_toml" {
+  template = "${file("${path.module}/../templates/haproxy.toml")}"
 }
 
 data "template_file" "audit_toml_linux" {

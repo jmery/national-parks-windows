@@ -128,7 +128,7 @@ resource "google_compute_instance" "mongodb" {
   }
 
   provisioner "file" {
-    content     = "${data.template_file.mongodb.rendered}"
+    content     = "${data.template_file.non_permanent_peer.rendered}"
     destination = "/home/${var.ssh_username}/hab-sup.service"
   }
 
@@ -229,3 +229,91 @@ resource "google_compute_instance" "national_parks" {
   }
 }
 
+resource "google_compute_instance" "haproxy" {
+  name         = "haproxy-np-${random_id.random.hex}"
+  machine_type = "${var.gcp_machine_type}"
+  zone         = "${local.gcp_zone}"
+  allow_stopping_for_update = true // Let Terraform resize on the fly if needed
+
+  connection {
+    user        = "${var.ssh_username}"
+    private_key = "${file("${var.ssh_user_private_key}")}"
+  }
+
+  labels {
+    x-contact     = "${var.label_contact}"
+    x-customer    = "${var.label_customer}"
+    x-project     = "${var.label_project}"
+    x-dept        = "${var.label_dept}"
+    x-application = "${var.label_application}"
+    x-ttl         = "${var.label_ttl}"
+  }
+
+  metadata {
+    sshKeys = "${var.ssh_username}:${file("${var.ssh_user_public_key}")}"
+  }
+
+  boot_disk {
+    auto_delete = true
+    initialize_params {
+      type = "pd-ssd"
+      size = 25
+      image = "centos-7"
+    }
+  }
+
+  network_interface {
+    network = "${google_compute_network.network.name}"
+    access_config {
+    }
+  }
+
+  provisioner "file" {
+    content     = "${data.template_file.install_hab_linux.rendered}"
+    destination = "/tmp/install_hab.sh"
+  }
+
+  provisioner "file" {
+    content     = "${data.template_file.non_permanent_peer.rendered}"
+    destination = "/home/${var.ssh_username}/hab-sup.service"
+  }
+
+  provisioner "file" {
+    content     = "${data.template_file.haproxy_toml.rendered}"
+    destination = "/home/${var.ssh_username}/haproxy.toml"
+  }
+
+  provisioner "file" {
+    content     = "${data.template_file.audit_toml_linux.rendered}"
+    destination = "/home/${var.ssh_username}/audit_linux.toml"
+  }
+   provisioner "file" {
+    content     = "${data.template_file.config_toml_linux.rendered}"
+    destination = "/home/${var.ssh_username}/config_linux.toml"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo rm -rf /etc/machine-id",
+      "sudo systemd-machine-id-setup",
+      "sudo hostname haproxy-np-${var.hab_prod_channel}",
+      "chmod +x /tmp/install_hab.sh",
+      "sudo /tmp/install_hab.sh",
+      "sleep ${var.sleep}",
+      "sudo mkdir -p /hab/user/haproxy/config /hab/user/config-baseline/config /hab/user/audit-baseline/config",
+      "sudo chown hab:hab -R /hab/user",
+      "sudo /sbin/sysctl -w net.ipv4.conf.all.accept_source_route=0",
+      "sudo /sbin/sysctl -w net.ipv4.conf.default.accept_source_route=0",
+      "sudo /sbin/sysctl -w net.ipv4.conf.default.accept_redirects=0",
+      "sudo /sbin/sysctl -w net.ipv4.conf.all.accept_redirects=0",
+      //"sudo cp /home/${var.ssh_username}/audit_linux.toml /hab/user/audit-baseline/config/user.toml",
+      //"sudo cp /home/${var.ssh_username}/config_linux.toml /hab/user/config-baseline/config/user.toml",
+      "sudo cp /home/${var.ssh_username}/haproxy.toml /hab/user/haproxy/config/user.toml",
+      //"sudo hab svc load effortless/config-baseline --group ${var.group} --strategy at-once --channel stable",
+      //"sudo hab svc load effortless/audit-baseline --group ${var.group} --strategy at-once --channel stable",
+      "sudo hab svc load core/haproxy --group ${var.hab_group}"
+      //"sudo hab svc load core/haproxy --group ${var.group} --bind backend:national-parks.${var.group}"
+    ]
+
+  }
+}
